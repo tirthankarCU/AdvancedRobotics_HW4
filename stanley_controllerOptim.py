@@ -2,12 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cubic_spline_planner
 from scipy.optimize import minimize
+import time
 
 dt = 0.1  # [s] time difference
 L = 2.9  # [m] Wheel base of vehicle
 max_steer = np.radians(30.0)  # [rad] max steering angle
-
-show_animation = True
+show_animation = False
 
 
 class State(object):
@@ -19,6 +19,7 @@ class State(object):
     :param yaw: (float) yaw angle
     :param v: (float) speed
     """
+
     def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
         """Instantiate the object."""
         super(State, self).__init__()
@@ -37,7 +38,6 @@ class State(object):
         :param delta: (float) Steering
         """
         delta = np.clip(delta, -max_steer, max_steer)
-
         self.x += self.v * np.cos(self.yaw) * dt
         self.y += self.v * np.sin(self.yaw) * dt
         self.yaw += (self.v / L ) * np.tan(delta) * dt
@@ -87,7 +87,6 @@ def stanley_control(state, cx, cy, cyaw, last_target_idx,k):
     :return: (float, int)
     """
     current_target_idx, error_front_axle = calc_target_index(state, cx, cy)
-
     if last_target_idx >= current_target_idx:
         current_target_idx = last_target_idx
 
@@ -167,66 +166,45 @@ def main(coeff_arr,opt):
     state = State(x=-0.0, y=5.0, yaw=np.radians(20.0), v=0.0)
 
     last_idx = len(cx) - 1
-    time = 0.0
-    x = [state.x]
-    y = [state.y]
-    yaw = [state.yaw]
-    v = [state.v]
-    t = [0.0]
+    time_ = 0.0
     target_idx, _ = calc_target_index(state, cx, cy)
-    while max_simulation_time >= time and last_idx > target_idx:
+    total_err,error_front_axle,cnt=0,0,0
+    while max_simulation_time >= time_ and last_idx > target_idx:
+        err=np.abs(target_speed-state.v)+np.abs(error_front_axle)
         if opt==2:
             ai = pid_control(target_speed, state.v,Kp,Ki,Kd)
         elif opt==1:
             ai = p_control(target_speed, state.v,Kp)
         di, target_idx, error_front_axle = stanley_control(state, cx, cy, cyaw, target_idx,k)
         state.update(ai, di)
-
-        time += dt
-        x.append(state.x)
-        y.append(state.y)
-        yaw.append(state.yaw)
-        v.append(state.v)
-        t.append(time)
-
-        if show_animation:  # pragma: no cover
-            plt.cla()
-            # for stopping simulation with the esc key.
-            plt.gcf().canvas.mpl_connect('key_release_event',
-                    lambda event: [exit(0) if event.key == 'escape' else None])
-            plt.plot(cx, cy, ".r", label="course")
-            plt.plot(x, y, "-b", label="trajectory")
-            plt.plot(cx[target_idx], cy[target_idx], "xg", label="target")
-            plt.axis("equal")
-            plt.grid(True)
-            plt.title("Speed[km/h]:" + str(state.v * 3.6)[:4])
-            plt.pause(0.001)
+        time_ += dt
+        total_err+=err
+        cnt+=1
 
     # Test
-    assert last_idx >= target_idx, "Cannot reach goal"
-    if show_animation:  # pragma: no cover
-        plt.plot(cx, cy, ".r", label="course")
-        plt.plot(x, y, "-b", label="trajectory")
-        plt.legend()
-        plt.xlabel("x[m]")
-        plt.ylabel("y[m]")
-        plt.axis("equal") 
-        plt.grid(True)
-
-        plt.subplots(1)
-        plt.plot(t, [iv * 3.6 for iv in v], "-r")
-        plt.xlabel("Time[s]")
-        plt.ylabel("Speed[km/h]")
-        plt.grid(True)
-        plt.show()
+    print('DONE')
+    # assert last_idx >= target_idx, "Cannot reach goal"
+    return np.log(total_err/cnt)
 
 if __name__ == '__main__':
-    opt=1
 # OPTION 2
-    if opt==2:  
-        param_init=np.array([ 0.90880928,0.944044,0.013869,-0.817982]) #[0.5,1,0.1,0.1]
-        main(param_init,2)
+    opt=1
+    if opt==2:
+        param_init=np.array([0.2,0.2,0.2,0.2]) #[0.5,1,0.1,0.1]
+        res=minimize(fun=main,
+                    x0=param_init,
+                    args=(opt),
+                    method='Nelder-Mead',
+                    options={'maxiter':100, 'disp': True}
+                    )
+        print(f'Optimal Controller Coeff{opt} {res.x}')
 # OPTION 1
-    elif opt==1:
-        param_init=np.array([15.88447979,10.01846168]) #[0.5,1]
-        main(param_init,1)
+    else:
+        param_init=np.array([0.2,0.2]) #[0.5,1]
+        res=minimize(fun=main,
+                    x0=param_init,
+                    args=(opt),
+                    method='Nelder-Mead',
+                    options={'maxiter':100, 'disp': True}
+                    )
+        print(f'Optimal Controller Coeff{opt} {res.x}')
