@@ -146,8 +146,8 @@ def calc_target_index(state, cx, cy):
 
 
 def main(coeff_arr,opt):
-    global isFirstErr
-    isFirstErr=True
+    global prev_err, isFirstErr, integral_t 
+    prev_err,integral_t,isFirstErr=0,0,True 
     if opt==2:
         k,Kp,Ki,Kd=coeff_arr
     elif opt==1:
@@ -221,10 +221,13 @@ def main(coeff_arr,opt):
         plt.show()
 
 if __name__ == '__main__':
-    opt=1
+    opt=2
 # OPTION 2
     if opt==2:  
-        param_init=np.array([ 0.90880928,0.944044,0.013869,-0.817982]) #[0.5,1,0.1,0.1]
+        #[0.90880928,0.944044,0.013869,-0.817982]
+        #[2.47291642e+00,2.83102609e+00,-5.63907686e-07,-5.27911749e-01]
+        #[12.07378138,12.35622768,-0.17252543,-0.05639835]
+        param_init=np.array([11.63813308,12.0552154,-0.11803027,-0.04411984]) #[0.5,1,0.1,0.1]
         main(param_init,2)
 # OPTION 1
     elif opt==1:

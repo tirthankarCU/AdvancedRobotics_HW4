@@ -145,8 +145,8 @@ def calc_target_index(state, cx, cy):
 
 
 def main(coeff_arr,opt):
-    global isFirstErr
-    isFirstErr=True
+    global prev_err, isFirstErr, integral_t 
+    prev_err,integral_t,isFirstErr=0,0,True 
     if opt==2:
         k,Kp,Ki,Kd=coeff_arr
     elif opt==1:
@@ -180,22 +180,21 @@ def main(coeff_arr,opt):
         time_ += dt
         total_err+=err
         cnt+=1
-
     # Test
-    print('DONE')
+    #print('DONE')
     # assert last_idx >= target_idx, "Cannot reach goal"
     return np.log(total_err/cnt)
 
 if __name__ == '__main__':
 # OPTION 2
-    opt=1
+    opt=2
     if opt==2:
-        param_init=np.array([0.2,0.2,0.2,0.2]) #[0.5,1,0.1,0.1]
+        param_init=np.array([0.5,0.5,0.5,0.5]) #[0.5,1,0.1,0.1]
         res=minimize(fun=main,
                     x0=param_init,
                     args=(opt),
                     method='Nelder-Mead',
-                    options={'maxiter':100, 'disp': True}
+                    options={'maxiter':1000, 'disp': True}
                     )
         print(f'Optimal Controller Coeff{opt} {res.x}')
 # OPTION 1
